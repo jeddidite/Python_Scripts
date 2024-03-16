@@ -7,32 +7,33 @@ sensors-detect -y
 """
 import subprocess
 
-# Host info output
-def printhost():
-    serial = subprocess.run(['sudo dmidecode -t3 | grep "Serial Number"'], capture_output=True, text=True, shell=True)
-    serial = serial.stdout.split('Serial Number: ')[1].strip()
-    product = subprocess.run(['sudo dmidecode -t1 | grep "Product"'], capture_output=True, text=True, shell=True)
-    product = product.stdout.split('Product Name: ')[1].strip()
-    man = subprocess.run(['sudo dmidecode -t1 | grep "Manufacturer"'], capture_output=True, text=True, shell=True)
-    man = man.stdout.split('Manufacturer: ')[1].strip()
-    asset = subprocess.run(['sudo dmidecode -t3 | grep "Asset"'], capture_output=True, text=True, shell=True)
-    asset = asset.stdout.split('Asset Tag: ')[1].strip()
-    hostname = subprocess.run(['hostname'], capture_output=True, text=True, shell=True)
-    hostname = hostname.stdout.strip()
-    hostnamectl = subprocess.run(['hostnamectl | tail -5'], capture_output=True, text=True, shell=True)
-    hostnamectl = hostnamectl.stdout.split('Operating System: ')[0].strip().splitlines()
-    date = subprocess.run(['date'], capture_output=True, text=True, shell=True)
-    date = date.stdout.strip()
-    uptime = subprocess.run(['uptime'], capture_output=True, text=True, shell=True)
-    uptime = uptime.stdout.strip()
-    who = subprocess.run(['who'], capture_output=True, text=True, shell=True)
-    who = who.stdout.strip()
-    print("Device Information:" + '\n' + "OS: " + hostnamectl[0] + "\n" + hostnamectl[1].strip() + "\n" + hostnamectl[4].strip())
-    print("Serial Number: " + serial + "\n" + "Product: " + product)
-    print("Asset Number:  " + asset + "\n" + "Hostname: " + hostname)
-    print("Date:  " + date + "\n" + "Uptime: " + uptime)
-    print("")
+# Function to run subproccess commands with a search filter.
+def subproc(command, splitter=None):
+    command_parts = command.split()
+    shell = subprocess.run(command_parts, capture_output=True, text=True)
+    if splitter:
+        try:
+            after_split = shell.stdout.split(splitter, 1)[1].strip()
+            refined = after_split.split('\n', 1)[0].strip()
+        except IndexError:
+            refined = shell.stdout.strip()
+    else:
+        refined = shell.stdout.strip()
+    return refined
 
+# Host info output
+def deviceinfo():
+    t1 = subproc('sudo dmidecode -t1', 'Manufacturer:')
+    t2 = subproc('sudo dmidecode -t1', 'Product Name:')
+    t3 = subproc('sudo dmidecode -t1', 'Serial Number:')
+    t4 = subproc('sudo hostname', '')
+    t5 = subproc('sudo hostnamectl', 'Operating System:')
+    t6 = subproc('sudo hostnamectl', 'Kernel:')
+    t7 = subproc('sudo hostnamectl', 'Architecture:')
+    t8 = subproc('sudo uptime', '')
+    t9 =subproc('sudo date', '')
+    t10 = subproc('sudo who', '')
+    print(f"Manufacturer: {t1}\nProduct Name: {t2}\nSerial Number: {t3}\nHostname: {t4}\nOperating System: {t5}\nKernel: {t6}\nArchitecture: {t7}\n\nUptime: \n{t8}\n\nDate:\n{t9}\n\nWho is Logged in:\n{t10}\n")
 
 #CPU Output
 def print_cpu():
@@ -68,7 +69,7 @@ def print_cpu():
         print(f"Max Speed: {max_speed} Current Speed: {current_speed}")
         print(f"Voltage: {voltage}")
         print(f"Cores: {core}")
-    
+
 def print_mem():
     # Get serial numbers and locators
     memserial_result = subprocess.run(['sudo', 'dmidecode', '-t17'], capture_output=True, text=True) #Running dmidecode
@@ -98,7 +99,9 @@ def print_mem():
                locator = line.split('Locator: ')[1].strip()
                print(f"{locator}")
         print("\n")
-printhost()
+
+print("Information about Hardware Inside device:\n")
+deviceinfo()
 print_cpu()
 print_mem()
 
