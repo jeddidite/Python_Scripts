@@ -42,7 +42,7 @@ def print_cpu():
     if rawdata.returncode == 0:
         lines = rawdata.stdout.split('\n')
         Manufacturer = ''
-        Family = ''   
+        Family = ''
         for line in lines:
             # At the start of a new Processor Information section, check and print if we have previous Manufacturer and Family
             if 'Processor Information' in line:
@@ -81,7 +81,7 @@ def print_mem():
                 dimm_counter += 1  # Each instance of "Memory Device" means +1 DIMM installed
                 print(f"\nDIMM {dimm_counter}:")
             elif 'Serial Number' in line and 'No Module Installed' not in line: # If "Serial Number exists"
-                serial_number = line.split('Serial Number: ')[1].strip() #Split each dimm serial number 
+                serial_number = line.split('Serial Number: ')[1].strip() #Split each dimm serial number
                 print(f"Serial Number: {serial_number}") #Print each Serial number on a new line, each serial is conencted to the counter
             elif 'Part Number' in line:
                 part_number = line.split('Part Number: ')[1].strip()
@@ -100,10 +100,48 @@ def print_mem():
                print(f"{locator}")
         print("\n")
 
+def network_devices():
+    eth_devices = subprocess.run(["ip -o link show | awk -F': ' '{print $2}' | grep -v 'lo'"], capture_output=True, text=True, shell=True)
+    if eth_devices.returncode == 0:
+        eth_devices_list = eth_devices.stdout.split('\n')
+        devices = [device for device in eth_devices_list if device]
+        return devices
+
+def network_info():
+    network_device = network_devices()
+    if network_device:
+        for i in network_device:
+            link_speed_output = subproc(f'sudo ethtool {i}')
+            if "Speed:" in link_speed_output:
+                link_speed = subproc(f'sudo ethtool {i}', 'Speed').split('\n')[0].strip()
+            else:
+                link_speed = ""
+            print(
+                f"{i} \n" 
+                f"{subproc(f'ifconfig {i}', 'inet')}"
+                f"\nLink Speed: {link_speed}"
+                f"\nMAC Address: {subproc(f'ip a show {i}', 'link/ether')}"
+                f"\nTX Errors: {subproc(f'ifconfig {i}', 'TX errors')}" 
+                f"\nRX Errors: {subproc(f'ifconfig {i}', 'RX errors')}\n"
+            )
+    else:
+        print("No network devices found.")
+
+
+def driveinfo():
+    i = "/dev/sda1"
+    t1 = subproc('lsblk', '')
+    t2 = subproc('sudo lshw -class disk -class storage', 'serial')
+    t3 = subproc('sudo parted -l', '')
+    t4 = subproc(f'sudo smartctl -a -t short {i}', 'test result')
+    print(f"Serial Number: {t2}\nDrive Health{t4}")
+
 print("Information about Hardware Inside device:\n")
 deviceinfo()
 print_cpu()
 print_mem()
+network_info()
+driveinfo()
 
 """
 console 
